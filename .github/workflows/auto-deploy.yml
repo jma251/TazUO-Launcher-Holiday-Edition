@@ -1,11 +1,17 @@
 name: Launcher-Deploy
 
+# INHERITED FROM UPSTREAM (PlayTazUO/TUO-Launcher). Deliberately reduced to
+# workflow_dispatch only - do NOT re-add the "push:" trigger.
+#
+# This workflow builds all three operating systems and publishes a release
+# tagged "TazUO-Launcher" with makeLatest: true. Left on a push trigger it
+# would fight build-launcher.yml over the "Latest" badge on every push to
+# main, double-build each commit, and create extra v<version> git tags.
+#
+# build-launcher.yml is the only workflow here that should publish a release
+# automatically.
+
 on:
-  push:
-    branches: "main"
-    paths-ignore:
-      - "*.yml"
-      - "*.md"
   workflow_dispatch:
     inputs:
       branch:
