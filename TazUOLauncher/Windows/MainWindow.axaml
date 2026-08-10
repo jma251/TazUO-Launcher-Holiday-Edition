@@ -4,7 +4,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:TazUOLauncher"
     xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
-    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650" Width="900" Height="650" CanResize="False" x:DataType="vm:MainWindowViewModel" x:Class="TazUOLauncher.MainWindow" Icon="resm:TazUOLauncher.Resources.icon.ico?assembly=TazUOLauncher" Title="TazUOLauncher">
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650" Width="900" Height="650" CanResize="False" x:DataType="vm:MainWindowViewModel" x:Class="TazUOLauncher.MainWindow" Icon="resm:TazUOLauncher.Resources.icon.ico?assembly=TazUOLauncher" Title="TazUOLauncher - Holiday Edition">
     
     <Window.Resources>
         <x:String x:Key="NewsStyle">
