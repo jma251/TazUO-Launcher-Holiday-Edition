@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         viewModel.MainChannelSelected = LauncherSettings.GetLauncherSaveFile.DownloadChannel == ReleaseChannel.MAIN;
         viewModel.DevChannelSelected = LauncherSettings.GetLauncherSaveFile.DownloadChannel == ReleaseChannel.DEV;
         viewModel.LegacyChannelSelected = LauncherSettings.GetLauncherSaveFile.DownloadChannel == ReleaseChannel.NET472;
+        viewModel.HolidayChannelSelected = LauncherSettings.GetLauncherSaveFile.DownloadChannel == ReleaseChannel.HOLIDAY;
 
         InitPRBuildsMenu();
 
@@ -163,7 +164,7 @@ public partial class MainWindow : Window
         {
             switch (nextDownloadType)
             {
-                case ReleaseChannel.MAIN or ReleaseChannel.DEV or ReleaseChannel.NET472:
+                case ReleaseChannel.MAIN or ReleaseChannel.DEV or ReleaseChannel.NET472 or ReleaseChannel.HOLIDAY:
                     viewModel.UpdateButtonString = clientStatus == ClientStatus.NO_LOCAL_CLIENT ? CONSTANTS.NO_CLIENT_AVAILABLE : CONSTANTS.CLIENT_UPDATE_AVAILABLE;
                     viewModel.ShowDownloadAvailableButton = true;
                     break;
@@ -253,6 +254,7 @@ public partial class MainWindow : Window
                     viewModel.MainChannelSelected = true;
                     viewModel.DevChannelSelected = false;
                     viewModel.LegacyChannelSelected = false;
+                    viewModel.HolidayChannelSelected = false;
                     LauncherSettings.GetLauncherSaveFile.DownloadChannel = ReleaseChannel.MAIN;
 
                     RecheckAfterChannelUpdated();
@@ -276,6 +278,7 @@ public partial class MainWindow : Window
                     viewModel.DevChannelSelected = true;
                     viewModel.MainChannelSelected = false;
                     viewModel.LegacyChannelSelected = false;
+                    viewModel.HolidayChannelSelected = false;
                     LauncherSettings.GetLauncherSaveFile.DownloadChannel = ReleaseChannel.DEV;
                     RecheckAfterChannelUpdated();
                 });
@@ -298,7 +301,31 @@ public partial class MainWindow : Window
                     viewModel.DevChannelSelected = false;
                     viewModel.MainChannelSelected = false;
                     viewModel.LegacyChannelSelected = true;
+                    viewModel.HolidayChannelSelected = false;
                     LauncherSettings.GetLauncherSaveFile.DownloadChannel = ReleaseChannel.NET472;
+                    RecheckAfterChannelUpdated();
+                });
+            });
+    }
+    public void SetHolidayChannelClicked(object sender, RoutedEventArgs args)
+    {
+        if (LauncherSettings.GetLauncherSaveFile.DownloadChannel == ReleaseChannel.HOLIDAY) return;
+
+        _ = Utility.ShowConfirmationDialog(this,
+            "Are you sure?",
+            "Changing channels will remove the current installation to ensure we have the correct files.\n" +
+            "This is safe, your settings and profile data are saved, but if you store other files in the same TazUO folder, they will be removed.",
+            b =>
+            {
+                if (!b) return;
+
+                Dispatcher.UIThread.Invoke(() =>
+                {
+                    viewModel.DevChannelSelected = false;
+                    viewModel.MainChannelSelected = false;
+                    viewModel.LegacyChannelSelected = false;
+                    viewModel.HolidayChannelSelected = true;
+                    LauncherSettings.GetLauncherSaveFile.DownloadChannel = ReleaseChannel.HOLIDAY;
                     RecheckAfterChannelUpdated();
                 });
             });
@@ -476,6 +503,12 @@ public partial class MainWindow : Window
         nextDownloadType = ReleaseChannel.NET472;
         DoNextDownload();
     }
+    public void DownloadHolidayBuildClick(object sender, RoutedEventArgs args)
+    {
+        if (clientStatus == ClientStatus.DOWNLOAD_IN_PROGRESS) return;
+        nextDownloadType = ReleaseChannel.HOLIDAY;
+        DoNextDownload();
+    }
 
     private void InitPRBuildsMenu()
     {
@@ -606,6 +639,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private bool mainChannelSelected;
     private bool dangerNoticeStringShowing = BuildInfo.IsDebug;
     private bool legacyChannelSelected;
+    private bool holidayChannelSelected;
     private bool autoApplyUpdates = LauncherSettings.GetLauncherSaveFile.AutoDownloadUpdates;
     private string newsContentString = "Gathering news...";
     private ObservableCollection<PRBuildMenuItem> prBuilds = new ObservableCollection<PRBuildMenuItem>();
@@ -665,6 +699,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             legacyChannelSelected = value;
             OnPropertyChanged(nameof(LegacyChannelSelected));
+        }
+    }
+    public bool HolidayChannelSelected
+    {
+        get => holidayChannelSelected; set
+        {
+            holidayChannelSelected = value;
+            OnPropertyChanged(nameof(HolidayChannelSelected));
         }
     }
     public bool DevChannelSelected

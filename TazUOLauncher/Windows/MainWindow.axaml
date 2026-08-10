@@ -75,6 +75,7 @@
                     <MenuItem Header="Install latest main build" Click="DownloadMainBuildClick"/>
                     <MenuItem Header="Install latest dev build" Click="DownloadDevBuildClick"/>
                     <MenuItem Header="Install latest legacy build" Click="DownloadLegacyBuildClick"/>
+                    <MenuItem Header="Install latest Holiday Edition build" Click="DownloadHolidayBuildClick"/>
                     <MenuItem Header="Install PR build (test)" ItemsSource="{Binding PRBuilds}">
                         <MenuItem.Styles>
                             <Style Selector="MenuItem" x:DataType="vm:PRBuildMenuItem">
@@ -100,6 +101,11 @@
                     <MenuItem Header="Legacy Channel" GroupName="ChannelGroup" IsChecked="{Binding LegacyChannelSelected}" Click="SetLegacyChannelClicked">
                         <MenuItem.Icon>
                             <Image Opacity="0.4" Source="resm:TazUOLauncher.Resources.square-check-solid.png?assembly=TazUOLauncher" IsVisible="{Binding LegacyChannelSelected}" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Holiday Edition Channel" GroupName="ChannelGroup" IsChecked="{Binding HolidayChannelSelected}" Click="SetHolidayChannelClicked">
+                        <MenuItem.Icon>
+                            <Image Opacity="0.4" Source="resm:TazUOLauncher.Resources.square-check-solid.png?assembly=TazUOLauncher" IsVisible="{Binding HolidayChannelSelected}" />
                         </MenuItem.Icon>
                     </MenuItem>
                 </MenuItem>
