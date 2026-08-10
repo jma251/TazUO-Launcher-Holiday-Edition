@@ -25,7 +25,7 @@ permissions:
 env:
   LAUNCHER_PROJECT_PATH: 'TazUOLauncher/TazUOLauncher.csproj'
   LAUNCHER_OUTPUT_PATH: 'bin/dist'
-  LAUNCHER_ZIP_NAME: 'TazUO-Launcher.zip'
+  LAUNCHER_ZIP_NAME: 'TazUOLauncher-HolidayEdition.zip'
   # Self-contained Windows 64-bit build: the .NET runtime is baked into the exe,
   # so players do not need .NET installed. Set explicitly rather than letting the
   # SDK guess, because the csproj forwards this same value to the updater build.
@@ -126,7 +126,7 @@ jobs:
         uses: ncipollo/release-action@v1.16.0
         with:
           artifacts: "${{ env.LAUNCHER_OUTPUT_PATH }}/${{ env.LAUNCHER_ZIP_NAME }}"
-          name: "TazUO Launcher (latest) - v${{ env.VERSION }}"
+          name: "TazUOLauncher - Holiday Edition (latest) - v${{ env.VERSION }}"
           body: |
             Automated build of the `main` branch.
 

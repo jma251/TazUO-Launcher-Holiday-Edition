@@ -4,7 +4,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:TazUOLauncher"
     xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
-    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650" Width="900" Height="650" CanResize="False" x:DataType="vm:MainWindowViewModel" x:Class="TazUOLauncher.MainWindow" Icon="resm:TazUOLauncher.Resources.icon.ico?assembly=TazUOLauncher" Title="TazUOLauncher">
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650" Width="900" Height="650" CanResize="False" x:DataType="vm:MainWindowViewModel" x:Class="TazUOLauncher.MainWindow" Icon="resm:TazUOLauncher.Resources.icon.ico?assembly=TazUOLauncher" Title="TazUOLauncher - Holiday Edition">
     
     <Window.Resources>
         <x:String x:Key="NewsStyle">
@@ -75,6 +75,7 @@
                     <MenuItem Header="Install latest main build" Click="DownloadMainBuildClick"/>
                     <MenuItem Header="Install latest dev build" Click="DownloadDevBuildClick"/>
                     <MenuItem Header="Install latest legacy build" Click="DownloadLegacyBuildClick"/>
+                    <MenuItem Header="Install latest Holiday Edition build" Click="DownloadHolidayBuildClick"/>
                     <MenuItem Header="Install PR build (test)" ItemsSource="{Binding PRBuilds}">
                         <MenuItem.Styles>
                             <Style Selector="MenuItem" x:DataType="vm:PRBuildMenuItem">
@@ -100,6 +101,11 @@
                     <MenuItem Header="Legacy Channel" GroupName="ChannelGroup" IsChecked="{Binding LegacyChannelSelected}" Click="SetLegacyChannelClicked">
                         <MenuItem.Icon>
                             <Image Opacity="0.4" Source="resm:TazUOLauncher.Resources.square-check-solid.png?assembly=TazUOLauncher" IsVisible="{Binding LegacyChannelSelected}" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Holiday Edition Channel" GroupName="ChannelGroup" IsChecked="{Binding HolidayChannelSelected}" Click="SetHolidayChannelClicked">
+                        <MenuItem.Icon>
+                            <Image Opacity="0.4" Source="resm:TazUOLauncher.Resources.square-check-solid.png?assembly=TazUOLauncher" IsVisible="{Binding HolidayChannelSelected}" />
                         </MenuItem.Icon>
                     </MenuItem>
                 </MenuItem>

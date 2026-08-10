@@ -52,6 +52,9 @@ internal static class UpdateHelper
             case ReleaseChannel.NET472:
                 url = CONSTANTS.NET472_CHANNEL_RELEASE_URL;
                 break;
+            case ReleaseChannel.HOLIDAY:
+                url = CONSTANTS.HOLIDAY_CHANNEL_RELEASE_URL;
+                break;
             default:
                 url = CONSTANTS.MAIN_CHANNEL_RELEASE_URL;
                 break;
@@ -94,18 +97,29 @@ internal static class UpdateHelper
 
     public static async Task<string> GetNews(ReleaseChannel channel)
     {
-        string chan = "dev";
-        switch (channel)
+        string url;
+
+        if (channel == ReleaseChannel.HOLIDAY)
         {
-            case ReleaseChannel.MAIN:
-                chan = "main";
-                break;
-            case ReleaseChannel.NET472:
-                chan = "legacy";
-                break;
+            // Holiday Edition keeps its changelog in its own repo, so it does not fit
+            // the branch-name substitution the other channels use.
+            url = CONSTANTS.HOLIDAY_CHANGE_LOG_URL;
         }
-        string url = string.Format(CONSTANTS.CHANGE_LOG_URL, chan);
-        
+        else
+        {
+            string chan = "dev";
+            switch (channel)
+            {
+                case ReleaseChannel.MAIN:
+                    chan = "main";
+                    break;
+                case ReleaseChannel.NET472:
+                    chan = "legacy";
+                    break;
+            }
+            url = string.Format(CONSTANTS.CHANGE_LOG_URL, chan);
+        }
+
         Console.WriteLine($"Grabbing changelog from {channel} channel...");
 
         try
