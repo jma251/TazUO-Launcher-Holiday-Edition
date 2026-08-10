@@ -1,0 +1,143 @@
+name: Build Launcher
+
+# Builds the TazUO Launcher on a Windows runner and publishes the result as a
+# downloadable zip attached to a GitHub release tagged "latest". Each run
+# replaces the previous "latest" release and zip.
+#
+# Modelled on TazUO-Holiday-Edition's build-legacy.yml.
+
+on:
+  # Run automatically whenever the main branch is updated.
+  push:
+    branches: [main]
+  # Allow starting a build by hand from the Actions tab.
+  workflow_dispatch:
+
+# Only one launcher build at a time; a newer push cancels an in-progress one.
+concurrency:
+  group: build-launcher
+  cancel-in-progress: true
+
+# Needed so the workflow can create/replace the "latest" release and tag.
+permissions:
+  contents: write
+
+env:
+  LAUNCHER_PROJECT_PATH: 'TazUOLauncher/TazUOLauncher.csproj'
+  LAUNCHER_OUTPUT_PATH: 'bin/dist'
+  LAUNCHER_ZIP_NAME: 'TazUO-Launcher.zip'
+  # Self-contained Windows 64-bit build: the .NET runtime is baked into the exe,
+  # so players do not need .NET installed. Set explicitly rather than letting the
+  # SDK guess, because the csproj forwards this same value to the updater build.
+  RUNTIME_ID: 'win-x64'
+  TAG_NAME: 'latest'
+
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  NUGET_XMLDOC_MODE: skip
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # Always build main, whether triggered by push or by hand.
+      - name: Check out main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # NOTE: this repo has no git submodules, so unlike the client's
+      # build-legacy.yml there is no submodule checkout step here.
+
+      # Read the launcher version (e.g. 2.6.18) so we can label the release, and
+      # record the exact main commit we built (a manual run may be dispatched
+      # from a different branch, so github.sha is not reliable here).
+      - name: Extract version and commit
+        shell: bash
+        run: |
+          export LC_ALL=C.UTF-8
+          echo "VERSION=$(grep -oP '<AssemblyVersion>\K\d+\.\d+\.\d+' ${{ env.LAUNCHER_PROJECT_PATH }} | head -1)" >> $GITHUB_ENV
+          echo "MAIN_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+      # Two SDKs on purpose: the launcher targets net10.0, but the bundled
+      # updater project targets net9.0. Installing both avoids a whole class of
+      # "framework not found" build failures.
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      # Publish the launcher. Post-publish targets in TazUOLauncher.csproj also
+      # build TazUOUpdater into an "update" subfolder of the output - the
+      # launcher needs that to be able to update itself.
+      - name: Publish launcher
+        run: dotnet publish ${{ env.LAUNCHER_PROJECT_PATH }} -c Release -r ${{ env.RUNTIME_ID }} -o ${{ env.LAUNCHER_OUTPUT_PATH }}
+
+      # Hard-fail if the build did not produce what we expect, rather than
+      # shipping a broken zip. Two things must exist:
+      #   1. TazUOLauncher.exe        - the launcher itself
+      #   2. update/TazUOUpdater.exe  - the helper that performs self-updates.
+      #      Without it the launcher's update button silently degrades to just
+      #      opening the releases page in a browser.
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          $dist = "${{ env.LAUNCHER_OUTPUT_PATH }}"
+
+          $launcherExe = Join-Path $dist 'TazUOLauncher.exe'
+          if (-not (Test-Path $launcherExe)) {
+            Write-Error "TazUOLauncher.exe was not produced by the publish step."
+            exit 1
+          }
+          Write-Host "Found launcher: $launcherExe"
+
+          $updaterExe = Join-Path $dist 'update/TazUOUpdater.exe'
+          if (-not (Test-Path $updaterExe)) {
+            Write-Error "update/TazUOUpdater.exe is missing - the launcher would not be able to update itself."
+            exit 1
+          }
+          Write-Host "Found updater: $updaterExe"
+
+      # Zip everything in bin/dist (exe, updater, any loose native dlls) into
+      # one archive.
+      - name: Create zip
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: ${{ env.LAUNCHER_OUTPUT_PATH }}
+          filename: ${{ env.LAUNCHER_ZIP_NAME }}
+          exclusions: '*.zip'
+
+      # Remove the previous "latest" release and its tag so the new one is
+      # created fresh against this commit. Ignored if there isn't one yet.
+      - name: Delete previous "latest" release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ env.TAG_NAME }}" --yes --cleanup-tag || echo "No previous release to delete."
+
+      # Create the single "latest" release with the freshly built zip.
+      - name: Publish "latest" release
+        uses: ncipollo/release-action@v1.16.0
+        with:
+          artifacts: "${{ env.LAUNCHER_OUTPUT_PATH }}/${{ env.LAUNCHER_ZIP_NAME }}"
+          name: "TazUO Launcher (latest) - v${{ env.VERSION }}"
+          body: |
+            Automated build of the `main` branch.
+
+            - Version: `v${{ env.VERSION }}`
+            - Commit: ${{ env.MAIN_SHA }}
+
+            Download `${{ env.LAUNCHER_ZIP_NAME }}` below, unzip it, and run `TazUOLauncher.exe`.
+            No .NET install required - the runtime is bundled.
+          tag: ${{ env.TAG_NAME }}
+          commit: ${{ env.MAIN_SHA }}
+          allowUpdates: true      # reuse the existing "latest" release
+          removeArtifacts: true   # drop the old zip before attaching the new one
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
