@@ -55,6 +55,9 @@ internal static class UpdateHelper
             case ReleaseChannel.HOLIDAY:
                 url = CONSTANTS.HOLIDAY_CHANNEL_RELEASE_URL;
                 break;
+            case ReleaseChannel.HOLIDAY_DEV:
+                url = CONSTANTS.HOLIDAY_DEV_CHANNEL_RELEASE_URL;
+                break;
             default:
                 url = CONSTANTS.MAIN_CHANNEL_RELEASE_URL;
                 break;
@@ -99,7 +102,7 @@ internal static class UpdateHelper
     {
         string url;
 
-        if (channel == ReleaseChannel.HOLIDAY)
+        if (channel is ReleaseChannel.HOLIDAY or ReleaseChannel.HOLIDAY_DEV)
         {
             // Holiday Edition keeps its changelog in its own repo, so it does not fit
             // the branch-name substitution the other channels use.
@@ -148,19 +151,30 @@ internal static class UpdateHelper
 
         if (releaseData == null || releaseData.assets == null) return null;
 
-        string platformZipName = PlatformHelper.GetPlatformZipName();
+        // The launcher zip is published under a fixed name rather than with a
+        // win-x64 style suffix, so match it by name first. The suffix rule is kept as
+        // a fallback in case per-platform launcher builds are published later.
+        GitHubReleaseData.Asset? selectedAsset = FindAssetByName(releaseData, CONSTANTS.LAUNCHER_ZIP_NAME);
 
-        GitHubReleaseData.Asset? selectedAsset = null;
-        foreach (GitHubReleaseData.Asset asset in releaseData.assets)
+        if (selectedAsset == null)
         {
-            if (asset.name != null && asset.name.EndsWith(platformZipName) && asset.browser_download_url != null)
+            string platformZipName = PlatformHelper.GetPlatformZipName();
+
+            foreach (GitHubReleaseData.Asset asset in releaseData.assets)
             {
-                selectedAsset = asset;
-                break;
+                if (asset.name != null && asset.name.EndsWith(platformZipName) && asset.browser_download_url != null)
+                {
+                    selectedAsset = asset;
+                    break;
+                }
             }
         }
 
-        if (selectedAsset == null) return null;
+        if (selectedAsset == null)
+        {
+            Console.WriteLine("No launcher zip found on the release; cannot self update.");
+            return null;
+        }
 
         try
         {
@@ -180,57 +194,102 @@ internal static class UpdateHelper
     }
 
     /// <summary>
-    /// Only supports dev/main not launcher channel
+    /// Finds a release asset by exact filename.
     /// </summary>
-    /// <param name="channel"></param>
-    /// <param name="downloadProgress"></param>
-    /// <param name="onCompleted"></param>
-    /// <param name="parentWindow"></param>
-    public static async void DownloadAndInstallZip(ReleaseChannel channel, DownloadProgress downloadProgress, Action onCompleted)
+    private static GitHubReleaseData.Asset? FindAssetByName(GitHubReleaseData releaseData, string name)
     {
-        if (!HaveData(channel)) return;
+        if (releaseData.assets == null) return null;
 
-        GitHubReleaseData releaseData = ReleaseData[channel];
-
-        if (releaseData == null || releaseData.assets == null)
+        foreach (GitHubReleaseData.Asset asset in releaseData.assets)
         {
-            _ = TryGetReleaseData(channel);
-            return;
+            if (string.Equals(asset.name, name, StringComparison.OrdinalIgnoreCase) && asset.browser_download_url != null)
+                return asset;
         }
 
-        string extractTo = PathHelper.ClientPath;
+        return null;
+    }
 
-        await Task.Run(() =>
+    /// <summary>
+    /// Picks the zip to install for a channel. Channels that publish a single
+    /// fixed-name asset are matched by that name and nothing else, so a differently
+    /// named zip in the same release can never be installed by mistake. The other
+    /// channels keep the platform-suffix rule with the ZIP_STARTS_WITH fallback.
+    /// </summary>
+    private static GitHubReleaseData.Asset? FindAssetForChannel(GitHubReleaseData releaseData, ReleaseChannel channel)
+    {
+        if (releaseData.assets == null) return null;
+
+        string? exactName = channel switch
         {
-            GitHubReleaseData.Asset? selectedAsset = null;
-            string platformZipName = PlatformHelper.GetPlatformZipName();
-            
-            // First, try to find platform-specific zip
-            foreach (GitHubReleaseData.Asset asset in releaseData.assets)
+            ReleaseChannel.HOLIDAY => CONSTANTS.HOLIDAY_ZIP_NAME,
+            ReleaseChannel.HOLIDAY_DEV => CONSTANTS.HOLIDAY_DEV_ZIP_NAME,
+            _ => null
+        };
+
+        if (exactName != null)
+            return FindAssetByName(releaseData, exactName);
+
+        string platformZipName = PlatformHelper.GetPlatformZipName();
+
+        // First, try to find platform-specific zip
+        foreach (GitHubReleaseData.Asset asset in releaseData.assets)
+        {
+            if (asset.name != null && asset.name.EndsWith(platformZipName) && asset.browser_download_url != null)
+                return asset;
+        }
+
+        // Fallback to current method if platform-specific zip not found
+        foreach (GitHubReleaseData.Asset asset in releaseData.assets)
+        {
+            if (asset.name != null && asset.name.EndsWith(".zip") && asset.name.StartsWith(CONSTANTS.ZIP_STARTS_WITH) && asset.browser_download_url != null)
+                return asset;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Downloads and installs a client channel into the client folder. Not for the
+    /// launcher channel; see DownloadLauncherZip for that.
+    /// </summary>
+    /// <param name="onCompleted">
+    /// Always invoked, with true only if a zip was actually installed. It must run on
+    /// every exit path: it is what re-enables the play button and hides the progress
+    /// bar, so returning without it leaves the launcher stuck mid-download.
+    /// </param>
+    public static async void DownloadAndInstallZip(ReleaseChannel channel, DownloadProgress downloadProgress, Action<bool> onCompleted)
+    {
+        bool installed = false;
+
+        try
+        {
+            // Only the selected channel and the launcher's own data are fetched up
+            // front, so a one-shot install from the Tools menu normally has none yet.
+            if (!HaveData(channel))
+                await TryGetReleaseData(channel);
+
+            GitHubReleaseData? releaseData = HaveData(channel) ? ReleaseData[channel] : null;
+
+            if (releaseData?.assets == null)
             {
-                if (asset.name != null && asset.name.EndsWith(platformZipName) && asset.browser_download_url != null)
-                {
-                    selectedAsset = asset;
-                    break;
-                }
+                Console.WriteLine($"No release data available for {channel}, nothing to install.");
+                return;
             }
-            
-            // Fallback to current method if platform-specific zip not found
-            if (selectedAsset == null)
+
+            string extractTo = PathHelper.ClientPath;
+
+            installed = await Task.Run(() =>
             {
-                foreach (GitHubReleaseData.Asset asset in releaseData.assets)
+                GitHubReleaseData.Asset? selectedAsset = FindAssetForChannel(releaseData, channel);
+
+                if (selectedAsset == null)
                 {
-                    if (asset.name != null && asset.name.EndsWith(".zip") && asset.name.StartsWith(CONSTANTS.ZIP_STARTS_WITH) && asset.browser_download_url != null)
-                    {
-                        selectedAsset = asset;
-                        break;
-                    }
+                    Console.WriteLine($"No matching asset on the {channel} release.");
+                    return false;
                 }
-            }
-            
-            if (selectedAsset != null)
-            {
+
                 Console.WriteLine($"Picked for download: {selectedAsset.name} from {selectedAsset.browser_download_url}");
+
                 try
                 {
                     string tempFilePath = Path.GetTempFileName();
@@ -242,15 +301,20 @@ internal static class UpdateHelper
 
                     Directory.CreateDirectory(extractTo);
                     ZipFile.ExtractToDirectory(tempFilePath, extractTo, true);
+
+                    return true;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString());
+                    return false;
                 }
-            }
-            
-            onCompleted?.Invoke();
-        });
+            });
+        }
+        finally
+        {
+            onCompleted?.Invoke(installed);
+        }
     }
 
     public static async Task<bool> ProcessRunningShouldWeProceed(Window parentWindow)

@@ -12,7 +12,8 @@ public enum ReleaseChannel
     DEV,
     LAUNCHER,
     NET472,
-    HOLIDAY
+    HOLIDAY,
+    HOLIDAY_DEV
 }
 
 public enum ClientStatus
