@@ -17,7 +17,26 @@ internal static class CONSTANTS {
     // than /releases/latest. The changelog needs its own URL because it lives in a
     // different repo and branch than the CHANGE_LOG_URL format above covers.
     public const string HOLIDAY_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/tags/latest";
-    public const string HOLIDAY_CHANGE_LOG_URL = "https://raw.githubusercontent.com/jma251/TazUO-Holiday-Edition/refs/heads/legacy/CHANGELOG.md";
+    // Read from the release branch, which is where stable builds are cut from, so the
+    // news panel matches what the stable channel actually installs.
+    public const string HOLIDAY_CHANGE_LOG_URL = "https://raw.githubusercontent.com/jma251/TazUO-Holiday-Edition/refs/heads/release/CHANGELOG.md";
+
+    // Holiday Edition dev builds. Replaced on every push to legacy-dev, and cut from
+    // the current release plus untested commits - so a dev build reports the SAME
+    // version as that release. It is therefore never polled or version-compared; it
+    // is installed only when the player explicitly asks for it from the Tools menu.
+    public const string HOLIDAY_DEV_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/tags/dev-latest";
+
+    // Holiday Edition publishes one fixed-name zip per channel, so its assets are
+    // matched by exact name instead of by the ZIP_STARTS_WITH fallback below. The dev
+    // zip is deliberately named so that fallback can never pick it up by accident.
+    public const string HOLIDAY_ZIP_NAME = "TazUO-Holiday-Edition.zip";
+    public const string HOLIDAY_DEV_ZIP_NAME = "HolidayEdition-Dev.zip";
+
+    // Must match LAUNCHER_ZIP_NAME in .github/workflows/build-launcher.yml. This zip
+    // carries no win-x64 style platform suffix, so the self update has to match it by
+    // name - looking only for a platform suffix finds nothing and the update fails.
+    public const string LAUNCHER_ZIP_NAME = "TazUOLauncher-HolidayEdition.zip";
     public const string REMOTE_VERSION_FORMAT = "Remote Version: {0}";
     public const string LOCAL_VERSION_FORMAT = "Local Version: {0}";
     public const string CLIENT_DIRECTORY_NAME = "TazUO";

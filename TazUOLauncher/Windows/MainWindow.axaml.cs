@@ -159,7 +159,14 @@ public partial class MainWindow : Window
         else
         {
             viewModel.DangerNoticeString = string.Empty;
-            viewModel.LocalVersionString = string.Format(CONSTANTS.LOCAL_VERSION_FORMAT, ClientHelper.LocalClientVersion.ToHumanReable());
+            string localVersion = ClientHelper.LocalClientVersion.ToHumanReable();
+
+            // A dev build reports the same version as the release it was cut from, so
+            // the recorded channel is the only thing that can tell them apart.
+            if (LauncherSettings.GetLauncherSaveFile.InstalledChannel == ReleaseChannel.HOLIDAY_DEV)
+                localVersion += " (dev build)";
+
+            viewModel.LocalVersionString = string.Format(CONSTANTS.LOCAL_VERSION_FORMAT, localVersion);
             viewModel.PlayButtonEnabled = true;
             clientStatus = ClientStatus.READY;
         }
@@ -228,14 +235,27 @@ public partial class MainWindow : Window
         viewModel.DownloadProgressBarPercent = 0;
         viewModel.ShowDownloadProgressBar = true;
 
-        UpdateHelper.DownloadAndInstallZip(nextDownloadType, prog, () =>
+        ReleaseChannel installingChannel = nextDownloadType;
+
+        UpdateHelper.DownloadAndInstallZip(nextDownloadType, prog, installed =>
         {
             viewModel.ShowDownloadProgressBar = false;
             nextDownloadType = ReleaseChannel.INVALID;
+
+            if (installed)
+            {
+                LauncherSettings.GetLauncherSaveFile.InstalledChannel = installingChannel;
+                _ = LauncherSettings.GetLauncherSaveFile.Save();
+            }
+
             ClientHelper.LocalClientVersion = ClientHelper.LocalClientVersion; //Client version is re-checked when setting this var
             ClientExistsChecks();
             ClientUpdateChecks();
             HandleUpdates();
+
+            // Set after the checks above, which clear the notice when a client is present.
+            if (!installed)
+                viewModel.DangerNoticeString = $"Could not install the {installingChannel} build. Nothing was changed.";
         });
     }
     private void OpenEditProfiles()
@@ -524,6 +544,17 @@ public partial class MainWindow : Window
     {
         if (clientStatus == ClientStatus.DOWNLOAD_IN_PROGRESS) return;
         nextDownloadType = ReleaseChannel.HOLIDAY;
+        DoNextDownload();
+    }
+    /// <summary>
+    /// Holiday Edition dev builds are installed on request only - they are never
+    /// polled or version-compared, because a dev build carries the same version as
+    /// the release it was cut from. This menu item is the only way they arrive.
+    /// </summary>
+    public void DownloadHolidayDevBuildClick(object sender, RoutedEventArgs args)
+    {
+        if (clientStatus == ClientStatus.DOWNLOAD_IN_PROGRESS) return;
+        nextDownloadType = ReleaseChannel.HOLIDAY_DEV;
         DoNextDownload();
     }
 
