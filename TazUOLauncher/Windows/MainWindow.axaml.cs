@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -10,6 +11,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Markdig;
 
@@ -60,11 +62,66 @@ public partial class MainWindow : Window
         if(dt.Month == 12)
             MainCanvas.Children.Add(new SnowOverlayControl(new Rect(0, 0, 800, 450)));
     }
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        RestoreWindowPosition();
+    }
+
+    /// <summary>
+    /// Puts the window back where it was last closed. Done here rather than in the
+    /// constructor because the position only sticks once the window actually exists.
+    /// </summary>
+    private void RestoreWindowPosition()
+    {
+        LauncherSettings.LauncherSaveFile save = LauncherSettings.GetLauncherSaveFile;
+
+        if (save.WindowPositionX == null || save.WindowPositionY == null)
+            return; //Never saved a position, let the OS place it as before
+
+        PixelPoint position = new PixelPoint(save.WindowPositionX.Value, save.WindowPositionY.Value);
+
+        // The saved spot may no longer exist - a monitor unplugged, or the desktop
+        // rearranged. Restoring blindly would open the launcher where it cannot be
+        // seen or dragged back, which is worse than the OS picking a spot.
+        if (!IsPositionVisible(position))
+            return;
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Position = position;
+    }
+
+    private bool IsPositionVisible(PixelPoint position)
+    {
+        Screens screens = Screens;
+
+        if (screens == null || screens.All == null)
+            return false;
+
+        foreach (Screen screen in screens.All)
+            if (screen.Bounds.Contains(position))
+                return true;
+
+        return false;
+    }
+
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         profileWindow?.Close();
 
-        _ = LauncherSettings.GetLauncherSaveFile.Save();
+        // Only a normal window has a usable position. A minimized one reports an
+        // off-screen placeholder on Windows, which would be stored and then rejected
+        // as invisible on the next start, losing the real position.
+        if (WindowState == WindowState.Normal)
+        {
+            LauncherSettings.GetLauncherSaveFile.WindowPositionX = Position.X;
+            LauncherSettings.GetLauncherSaveFile.WindowPositionY = Position.Y;
+        }
+
+        // Written synchronously: the process is about to exit, and the fire and forget
+        // save used to be able to lose the last change on the way out.
+        LauncherSettings.GetLauncherSaveFile.SaveSync();
 
         base.OnClosing(e);
     }

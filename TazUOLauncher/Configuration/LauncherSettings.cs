@@ -23,6 +23,12 @@ internal class LauncherSettings
         // tell the two apart once installed.
         public ReleaseChannel InstalledChannel { get; set; } = ReleaseChannel.INVALID;
 
+        // Where the launcher window was last placed, so it reopens where it was left
+        // instead of wherever the OS decides to put it. Null until the first close,
+        // and null rather than 0 so "never saved" is distinct from "saved at 0,0".
+        public int? WindowPositionX { get; set; }
+        public int? WindowPositionY { get; set; }
+
         public static LauncherSaveFile Get()
         {
             try
@@ -43,21 +49,28 @@ internal class LauncherSettings
 
         public async Task Save()
         {
-            await Task.Run(() =>
+            await Task.Run(SaveSync);
+        }
+
+        /// <summary>
+        /// Writes on the calling thread. Use this while shutting down: the async save
+        /// hands the work to a background thread that the exiting process can cut off
+        /// before it ever reaches disk.
+        /// </summary>
+        public void SaveSync()
+        {
+            try
             {
-                try
-                {
-                    var targetPath = Path.Combine(PathHelper.LauncherPath, "launcherdata.json");
-                    var tempPath = targetPath + ".tmp";
-                    
-                    File.WriteAllText(tempPath, JsonSerializer.Serialize<LauncherSaveFile>(this));
-                    File.Move(tempPath, targetPath, true);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
-            });
+                var targetPath = Path.Combine(PathHelper.LauncherPath, "launcherdata.json");
+                var tempPath = targetPath + ".tmp";
+
+                File.WriteAllText(tempPath, JsonSerializer.Serialize<LauncherSaveFile>(this));
+                File.Move(tempPath, targetPath, true);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
         public LauncherSaveFile() { }
     }
