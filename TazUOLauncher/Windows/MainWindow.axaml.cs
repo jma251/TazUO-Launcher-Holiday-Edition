@@ -469,6 +469,23 @@ public partial class MainWindow : Window
                     LauncherSettings.GetLauncherSaveFile.LastSelectedProfileName = selectedProfile.Name;
         }
     }
+    /// <summary>
+    /// Reinstalls the launcher from the latest release even when the version has not
+    /// moved. The update button only appears when the remote version is higher, so
+    /// without this a republished build carrying the same version could only be
+    /// installed by hand.
+    /// </summary>
+    public async void ReinstallLauncherClick(object sender, RoutedEventArgs args)
+    {
+        bool proceed = await Utility.ShowConfirmationDialog(
+            this,
+            "Reinstall the launcher?",
+            "This downloads the latest launcher release and restarts the launcher, even if you already have that version.\n\nProfiles, settings and the installed client are not affected.");
+
+        if (proceed)
+            GoToLauncherDownload(sender, args);
+    }
+
     public async void GoToLauncherDownload(object sender, RoutedEventArgs args)
     {
         const string updateFolder = "update";

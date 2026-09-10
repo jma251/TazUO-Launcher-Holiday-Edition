@@ -58,7 +58,12 @@ jobs:
         shell: bash
         run: |
           export LC_ALL=C.UTF-8
-          echo "VERSION=$(grep -oP '<AssemblyVersion>\K\d+\.\d+\.\d+' ${{ env.LAUNCHER_PROJECT_PATH }} | head -1)" >> $GITHUB_ENV
+          # The csproj holds the first three parts; CI appends the run number as a
+          # fourth. Every published build therefore gets a distinct, comparable
+          # version without anyone having to remember to bump the csproj, so a
+          # rebuild is always offered as an update instead of looking identical.
+          BASE_VERSION=$(grep -oP '<AssemblyVersion>\K\d+\.\d+\.\d+' ${{ env.LAUNCHER_PROJECT_PATH }} | head -1)
+          echo "VERSION=$BASE_VERSION.${{ github.run_number }}" >> $GITHUB_ENV
           echo "MAIN_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
       # Two SDKs on purpose: the launcher targets net10.0, but the bundled
@@ -75,7 +80,7 @@ jobs:
       # build TazUOUpdater into an "update" subfolder of the output - the
       # launcher needs that to be able to update itself.
       - name: Publish launcher
-        run: dotnet publish ${{ env.LAUNCHER_PROJECT_PATH }} -c Release -r ${{ env.RUNTIME_ID }} -o ${{ env.LAUNCHER_OUTPUT_PATH }}
+        run: dotnet publish ${{ env.LAUNCHER_PROJECT_PATH }} -c Release -r ${{ env.RUNTIME_ID }} -o ${{ env.LAUNCHER_OUTPUT_PATH }} -p:AssemblyVersion=${{ env.VERSION }} -p:FileVersion=${{ env.VERSION }}
 
       # Hard-fail if the build did not produce what we expect, rather than
       # shipping a broken zip. Two things must exist:

@@ -22,6 +22,12 @@ internal static class LauncherVersion
 
         string pv = prependv ? "v" : string.Empty;
 
-        return $"{pv}{v.Major}.{v.Minor}.{v.Build}";
+        // Include the fourth part when there is one: CI stamps the build number
+        // there, and without it two different builds display as the same version.
+        // Client versions are three-part, so their Revision is -1 and nothing is
+        // appended for them.
+        string revision = v.Revision > 0 ? $".{v.Revision}" : string.Empty;
+
+        return $"{pv}{v.Major}.{v.Minor}.{v.Build}{revision}";
     }
 }
