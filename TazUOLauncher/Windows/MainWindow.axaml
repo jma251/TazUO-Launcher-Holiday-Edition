@@ -86,6 +86,7 @@
                         </MenuItem.Styles>
                     </MenuItem>
                     <MenuItem Header="Import ClassicUO Launcher profiles" Click="ImportCUOLauncherClick"/>
+                    <MenuItem Header="Reinstall launcher (latest)" Click="ReinstallLauncherClick"/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Update channel">
