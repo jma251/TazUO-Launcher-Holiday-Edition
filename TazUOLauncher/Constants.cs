@@ -12,11 +12,13 @@ internal static class CONSTANTS {
     public const string NET472_CHANNEL_RELEASE_URL = "https://api.github.com/repos/PlayTazUO/TazUO/releases/tags/TazUO-Legacy";
     public const string CHANGE_LOG_URL = "https://raw.githubusercontent.com/PlayTazUO/TazUO/refs/heads/{0}/CHANGELOG.md";
 
-    // Holiday Edition channel. Its release tag is literally "latest" (replaced by
-    // that repo's build workflow on every push), so query the tag by name rather
-    // than /releases/latest. The changelog needs its own URL because it lives in a
-    // different repo and branch than the CHANGE_LOG_URL format above covers.
-    public const string HOLIDAY_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/tags/latest";
+    // Holiday Edition channel. Resolved through the repository's "Latest" badge
+    // rather than by tag name: the release tag has changed once already, and each
+    // time it does a by-name lookup 404s and the launcher shows v0.0.0. /latest
+    // names no tag, so it keeps working whatever the release is tagged.
+    // The changelog needs its own URL because it lives in a different repo and
+    // branch than the CHANGE_LOG_URL format above covers.
+    public const string HOLIDAY_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/latest";
     // Read from the release branch, which is where stable builds are cut from, so the
     // news panel matches what the stable channel actually installs.
     public const string HOLIDAY_CHANGE_LOG_URL = "https://raw.githubusercontent.com/jma251/TazUO-Holiday-Edition/refs/heads/release/CHANGELOG.md";
@@ -25,7 +27,9 @@ internal static class CONSTANTS {
     // the current release plus untested commits - so a dev build reports the SAME
     // version as that release. It is therefore never polled or version-compared; it
     // is installed only when the player explicitly asks for it from the Tools menu.
-    public const string HOLIDAY_DEV_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/tags/dev-latest";
+    // Tagged "dev-build". This one has to be looked up by tag, because a prerelease
+    // never carries the "Latest" badge that the stable channel above resolves through.
+    public const string HOLIDAY_DEV_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/tags/dev-build";
 
     // Holiday Edition publishes one fixed-name zip per channel, so its assets are
     // matched by exact name instead of by the ZIP_STARTS_WITH fallback below. The dev
