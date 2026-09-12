@@ -7,7 +7,13 @@ internal static class CONSTANTS {
     public const string MAIN_CHANNEL_RELEASE_URL = "https://api.github.com/repos/PlayTazUO/TazUO/releases/latest";
     // Self-update points at this fork, not upstream, so a stock upstream launcher
     // release can never overwrite the Holiday Edition changes below.
-    public const string LAUNCHER_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Launcher-Holiday-Edition/releases/tags/latest";
+    //
+    // Resolved through the "Latest" badge, never by tag name. This is the one URL
+    // that must never break: if it 404s, every installed launcher loses its only
+    // update path and can be recovered solely by downloading a zip by hand. A tag
+    // name can be renamed, deleted or burned; the badge just follows whatever the
+    // newest release is.
+    public const string LAUNCHER_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Launcher-Holiday-Edition/releases/latest";
     public const string LAUNCHER_LATEST_URL = "https://github.com/jma251/TazUO-Launcher-Holiday-Edition/releases/latest";
     public const string NET472_CHANNEL_RELEASE_URL = "https://api.github.com/repos/PlayTazUO/TazUO/releases/tags/TazUO-Legacy";
     public const string CHANGE_LOG_URL = "https://raw.githubusercontent.com/PlayTazUO/TazUO/refs/heads/{0}/CHANGELOG.md";
