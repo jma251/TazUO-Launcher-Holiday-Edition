@@ -43,7 +43,11 @@ public partial class MainWindow : Window
         _ = DoChecksAsync();
         LoadProfiles();
 
-        Timer periodicChecks = new Timer(TimeSpan.FromHours(1));
+        // Every 15 minutes rather than hourly. A launcher left open used to sit for
+        // up to an hour before noticing a published update, which reads as "it never
+        // checks". Two API calls per pass, so 8 per hour - well inside GitHub's
+        // anonymous limit of 60 per hour per IP.
+        Timer periodicChecks = new Timer(TimeSpan.FromMinutes(15));
         periodicChecks.AutoReset = false;
         periodicChecks.Elapsed += async (sender, args) => 
         {
@@ -469,6 +473,19 @@ public partial class MainWindow : Window
                     LauncherSettings.GetLauncherSaveFile.LastSelectedProfileName = selectedProfile.Name;
         }
     }
+    /// <summary>
+    /// Re-runs the update check straight away, instead of waiting for the next
+    /// periodic pass. Without this the only way to notice a release published while
+    /// the launcher is open is to close and reopen it.
+    /// </summary>
+    public void CheckForUpdatesClick(object sender, RoutedEventArgs args)
+    {
+        if (clientStatus == ClientStatus.DOWNLOAD_IN_PROGRESS) return;
+
+        viewModel.RemoteVersionString = string.Format(CONSTANTS.REMOTE_VERSION_FORMAT, "Checking");
+        _ = DoChecksAsync();
+    }
+
     /// <summary>
     /// Reinstalls the launcher from the latest release even when the version has not
     /// moved. The update button only appears when the remote version is higher, so
