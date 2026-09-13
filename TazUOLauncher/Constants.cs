@@ -33,9 +33,11 @@ internal static class CONSTANTS {
     // the current release plus untested commits - so a dev build reports the SAME
     // version as that release. It is therefore never polled or version-compared; it
     // is installed only when the player explicitly asks for it from the Tools menu.
-    // Tagged "dev-build". This one has to be looked up by tag, because a prerelease
-    // never carries the "Latest" badge that the stable channel above resolves through.
-    public const string HOLIDAY_DEV_CHANNEL_RELEASE_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases/tags/dev-build";
+    // Located by content rather than by tag name: the newest prerelease carrying
+    // HOLIDAY_DEV_ZIP_NAME is the dev build by definition. A prerelease never gets
+    // the "Latest" badge, so that route is unavailable, and a tag name can be
+    // renamed out from under the launcher - which is exactly what happened once.
+    public const string HOLIDAY_RELEASES_URL = "https://api.github.com/repos/jma251/TazUO-Holiday-Edition/releases?per_page=20";
 
     // Holiday Edition publishes one fixed-name zip per channel, so its assets are
     // matched by exact name instead of by the ZIP_STARTS_WITH fallback below. The dev
@@ -48,6 +50,7 @@ internal static class CONSTANTS {
     // name - looking only for a platform suffix finds nothing and the update fails.
     public const string LAUNCHER_ZIP_NAME = "TazUOLauncher-HolidayEdition.zip";
     public const string REMOTE_VERSION_FORMAT = "Remote Version: {0}";
+    public const string VERSION_UNAVAILABLE = "unavailable";
     public const string LOCAL_VERSION_FORMAT = "Local Version: {0}";
     public const string CLIENT_DIRECTORY_NAME = "TazUO";
     public const string CLIENT_UPDATE_AVAILABLE = "TazUO update available";

@@ -34,38 +34,21 @@ internal static class UpdateHelper
 
     private static async Task<GitHubReleaseData?> TryGetReleaseData(ReleaseChannel channel)
     {
-        string url;
-        
         Console.WriteLine($"Grabbing release data for {channel}...");
-
-        switch (channel)
-        {
-            case ReleaseChannel.MAIN:
-                url = CONSTANTS.MAIN_CHANNEL_RELEASE_URL;
-                break;
-            case ReleaseChannel.DEV:
-                url = CONSTANTS.DEV_CHANNEL_RELEASE_URL;
-                break;
-            case ReleaseChannel.LAUNCHER:
-                url = CONSTANTS.LAUNCHER_RELEASE_URL;
-                break;
-            case ReleaseChannel.NET472:
-                url = CONSTANTS.NET472_CHANNEL_RELEASE_URL;
-                break;
-            case ReleaseChannel.HOLIDAY:
-                url = CONSTANTS.HOLIDAY_CHANNEL_RELEASE_URL;
-                break;
-            case ReleaseChannel.HOLIDAY_DEV:
-                url = CONSTANTS.HOLIDAY_DEV_CHANNEL_RELEASE_URL;
-                break;
-            default:
-                url = CONSTANTS.MAIN_CHANNEL_RELEASE_URL;
-                break;
-        }
 
         return await Task.Run(async () =>
         {
-            var d = await TryGetReleaseData(url);
+            GitHubReleaseData? d;
+
+            if (channel == ReleaseChannel.HOLIDAY_DEV)
+            {
+                // Found by content, not by tag: see HOLIDAY_RELEASES_URL.
+                d = await TryGetNewestPrerelease(CONSTANTS.HOLIDAY_RELEASES_URL, CONSTANTS.HOLIDAY_DEV_ZIP_NAME);
+            }
+            else
+            {
+                d = await TryGetReleaseData(UrlForChannel(channel));
+            }
 
             if (d != null)
                 if (!ReleaseData.TryAdd(channel, d))
@@ -75,7 +58,32 @@ internal static class UpdateHelper
         });
     }
 
-    private static async Task<GitHubReleaseData?> TryGetReleaseData(string url)
+    private static string UrlForChannel(ReleaseChannel channel)
+    {
+        switch (channel)
+        {
+            case ReleaseChannel.MAIN:
+                return CONSTANTS.MAIN_CHANNEL_RELEASE_URL;
+            case ReleaseChannel.DEV:
+                return CONSTANTS.DEV_CHANNEL_RELEASE_URL;
+            case ReleaseChannel.LAUNCHER:
+                return CONSTANTS.LAUNCHER_RELEASE_URL;
+            case ReleaseChannel.NET472:
+                return CONSTANTS.NET472_CHANNEL_RELEASE_URL;
+            case ReleaseChannel.HOLIDAY:
+                return CONSTANTS.HOLIDAY_CHANNEL_RELEASE_URL;
+            default:
+                return CONSTANTS.MAIN_CHANNEL_RELEASE_URL;
+        }
+    }
+
+    /// <summary>
+    /// Fetches a GitHub API URL. Returns null on any failure, including an HTTP error
+    /// status. That matters: GitHub answers 404 and 403 with a JSON body that
+    /// deserialises quite happily into an all-null release, which then reads as
+    /// version 0.0.0 and looks like a real answer instead of a failure.
+    /// </summary>
+    private static async Task<string?> TryGetJson(string url)
     {
         HttpRequestMessage restApi = new HttpRequestMessage()
         {
@@ -88,14 +96,80 @@ internal static class UpdateHelper
         try
         {
             using var httpClient = new HttpClient();
-            string jsonResponse = await httpClient.Send(restApi).Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<GitHubReleaseData>(jsonResponse);
+            var response = httpClient.Send(restApi);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"GitHub returned {(int)response.StatusCode} for {url}");
+                return null;
+            }
+
+            return await response.Content.ReadAsStringAsync();
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             return null;
         }
+    }
+
+    private static async Task<GitHubReleaseData?> TryGetReleaseData(string url)
+    {
+        string? json = await TryGetJson(url);
+
+        if (json == null) return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<GitHubReleaseData>(json);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Returns the newest non-draft prerelease carrying an asset with the given name.
+    /// GitHub lists releases newest first, so the first match wins. Identifying the
+    /// dev build by what it contains rather than by its tag means renaming the tag
+    /// cannot break the launcher.
+    /// </summary>
+    private static async Task<GitHubReleaseData?> TryGetNewestPrerelease(string releasesUrl, string assetName)
+    {
+        string? json = await TryGetJson(releasesUrl);
+
+        if (json == null) return null;
+
+        try
+        {
+            List<GitHubReleaseData>? releases = JsonSerializer.Deserialize<List<GitHubReleaseData>>(json);
+
+            if (releases == null) return null;
+
+            foreach (GitHubReleaseData release in releases)
+            {
+                if (release.draft || !release.prerelease || release.assets == null) continue;
+
+                foreach (GitHubReleaseData.Asset asset in release.assets)
+                {
+                    if (string.Equals(asset.name, assetName, StringComparison.OrdinalIgnoreCase) && asset.browser_download_url != null)
+                    {
+                        Console.WriteLine($"Dev build found: {release.tag_name} ({release.name})");
+                        return release;
+                    }
+                }
+            }
+
+            Console.WriteLine($"No prerelease carrying {assetName} was found.");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+
+        return null;
     }
 
     public static async Task<string> GetNews(ReleaseChannel channel)

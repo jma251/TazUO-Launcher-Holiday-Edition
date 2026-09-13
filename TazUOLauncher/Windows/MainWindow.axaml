@@ -77,7 +77,7 @@
                     <MenuItem Header="Install latest legacy build" Click="DownloadLegacyBuildClick"/>
                     <MenuItem Header="Install latest Holiday Edition build" Click="DownloadHolidayBuildClick"/>
                     <MenuItem Header="Install latest Holiday Edition dev build (unstable)" Click="DownloadHolidayDevBuildClick"/>
-                    <MenuItem Header="Install PR build (test)" ItemsSource="{Binding PRBuilds}">
+                    <MenuItem Header="Install PR build (test)" ItemsSource="{Binding PRBuilds}" SubmenuOpened="PRBuildsMenuOpened">
                         <MenuItem.Styles>
                             <Style Selector="MenuItem" x:DataType="vm:PRBuildMenuItem">
                                 <Setter Property="Header" Value="{Binding Header}"/>
@@ -86,6 +86,7 @@
                         </MenuItem.Styles>
                     </MenuItem>
                     <MenuItem Header="Import ClassicUO Launcher profiles" Click="ImportCUOLauncherClick"/>
+                    <MenuItem Header="Check for updates now" Click="CheckForUpdatesClick"/>
                     <MenuItem Header="Reinstall launcher (latest)" Click="ReinstallLauncherClick"/>
                 </MenuItem>
                 <Separator/>

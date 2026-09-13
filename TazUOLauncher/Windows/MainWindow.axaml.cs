@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private ProfileEditorWindow? profileWindow;
     private Profile? selectedProfile;
     private RelayCommand? refreshPRBuildsCommand;
+    private bool prBuildsLoaded;
     public MainWindow()
     {
         Instance = this;
@@ -43,7 +44,12 @@ public partial class MainWindow : Window
         _ = DoChecksAsync();
         LoadProfiles();
 
-        Timer periodicChecks = new Timer(TimeSpan.FromHours(1));
+        // Every 10 minutes rather than hourly. A launcher left open used to sit for up
+        // to an hour before noticing a published release, which reads as never checking
+        // at all. Two requests per pass, so twelve an hour against GitHub's anonymous
+        // limit of sixty per hour per IP - about 20% of the budget, leaving room for
+        // restarts and anything else sharing the address.
+        Timer periodicChecks = new Timer(TimeSpan.FromMinutes(10));
         periodicChecks.AutoReset = false;
         periodicChecks.Elapsed += async (sender, args) => 
         {
@@ -203,7 +209,15 @@ public partial class MainWindow : Window
     private void UpdateVersionStrings()
     {
         if (UpdateHelper.HaveData(LauncherSettings.GetLauncherSaveFile.DownloadChannel))
+        {
             viewModel.RemoteVersionString = string.Format(CONSTANTS.REMOTE_VERSION_FORMAT, UpdateHelper.ReleaseData[LauncherSettings.GetLauncherSaveFile.DownloadChannel].GetVersion().ToHumanReable());
+        }
+        else
+        {
+            // Say the lookup failed rather than leaving "Checking..." up forever or
+            // printing v0.0.0, which looks like a version the server actually returned.
+            viewModel.RemoteVersionString = string.Format(CONSTANTS.REMOTE_VERSION_FORMAT, CONSTANTS.VERSION_UNAVAILABLE);
+        }
     }
     private void ClientExistsChecks()
     {
@@ -470,6 +484,19 @@ public partial class MainWindow : Window
         }
     }
     /// <summary>
+    /// Re-runs the update check immediately instead of waiting for the next periodic
+    /// pass, so a release published while the launcher is open can be picked up
+    /// without closing it.
+    /// </summary>
+    public void CheckForUpdatesClick(object sender, RoutedEventArgs args)
+    {
+        if (clientStatus == ClientStatus.DOWNLOAD_IN_PROGRESS) return;
+
+        viewModel.RemoteVersionString = string.Format(CONSTANTS.REMOTE_VERSION_FORMAT, "Checking");
+        _ = DoChecksAsync();
+    }
+
+    /// <summary>
     /// Reinstalls the launcher from the latest release even when the version has not
     /// moved. The update button only appears when the remote version is higher, so
     /// without this a republished build carrying the same version could only be
@@ -635,7 +662,19 @@ public partial class MainWindow : Window
     private void InitPRBuildsMenu()
     {
         refreshPRBuildsCommand = new RelayCommand(() => _ = RefreshPRBuildsAsync());
-        SetPRBuildsMenu(new[] { new PRBuildMenuItem { Header = "Loading PR builds..." } });
+        SetPRBuildsMenu(new[] { new PRBuildMenuItem { Header = "Open to load PR builds" } });
+    }
+
+    /// <summary>
+    /// Loads the PR build list the first time that menu is opened. It used to be
+    /// fetched on every launch whether or not anyone looked at it, which cost two
+    /// requests against GitHub's 60 per hour per IP for nothing.
+    /// </summary>
+    public void PRBuildsMenuOpened(object sender, RoutedEventArgs args)
+    {
+        if (prBuildsLoaded) return;
+
+        prBuildsLoaded = true;
         _ = RefreshPRBuildsAsync();
     }
 
