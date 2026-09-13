@@ -71,23 +71,24 @@
                 <MenuItem.Header>
                     <Image Source="resm:TazUOLauncher.Resources.bars.png?assembly=TazUOLauncher" Width="20" Height="20" Stretch="Fill" Opacity="0.55" />
                 </MenuItem.Header>
-                <MenuItem Header="Tools">
-                    <MenuItem Header="Install latest main build" Click="DownloadMainBuildClick"/>
-                    <MenuItem Header="Install latest dev build" Click="DownloadDevBuildClick"/>
-                    <MenuItem Header="Install latest legacy build" Click="DownloadLegacyBuildClick"/>
-                    <MenuItem Header="Install latest Holiday Edition build" Click="DownloadHolidayBuildClick"/>
-                    <MenuItem Header="Install latest Holiday Edition dev build (unstable)" Click="DownloadHolidayDevBuildClick"/>
-                    <MenuItem Header="Install PR build (test)" ItemsSource="{Binding PRBuilds}" SubmenuOpened="PRBuildsMenuOpened">
-                        <MenuItem.Styles>
-                            <Style Selector="MenuItem" x:DataType="vm:PRBuildMenuItem">
-                                <Setter Property="Header" Value="{Binding Header}"/>
-                                <Setter Property="Command" Value="{Binding Command}"/>
-                            </Style>
-                        </MenuItem.Styles>
+                <MenuItem Header="Install build">
+                    <MenuItem Header="Taz">
+                        <MenuItem Header="Main" Click="DownloadMainBuildClick"/>
+                        <MenuItem Header="Dev" Click="DownloadDevBuildClick"/>
+                        <MenuItem Header="Legacy" Click="DownloadLegacyBuildClick"/>
+                        <MenuItem Header="PR" ItemsSource="{Binding PRBuilds}" SubmenuOpened="PRBuildsMenuOpened">
+                            <MenuItem.Styles>
+                                <Style Selector="MenuItem" x:DataType="vm:PRBuildMenuItem">
+                                    <Setter Property="Header" Value="{Binding Header}"/>
+                                    <Setter Property="Command" Value="{Binding Command}"/>
+                                </Style>
+                            </MenuItem.Styles>
+                        </MenuItem>
                     </MenuItem>
-                    <MenuItem Header="Import ClassicUO Launcher profiles" Click="ImportCUOLauncherClick"/>
-                    <MenuItem Header="Check for updates now" Click="CheckForUpdatesClick"/>
-                    <MenuItem Header="Reinstall launcher (latest)" Click="ReinstallLauncherClick"/>
+                    <MenuItem Header="Holiday Edition">
+                        <MenuItem Header="Release" Click="DownloadHolidayBuildClick"/>
+                        <MenuItem Header="Dev" Click="DownloadHolidayDevBuildClick"/>
+                    </MenuItem>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="Update channel">
@@ -113,6 +114,8 @@
                     </MenuItem>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="Check for updates" Click="CheckForUpdatesClick"/>
+                <Separator/>
                 <MenuItem Header="Options">
                     <MenuItem Header="Auto install updates" GroupName="OptionsGroup" IsChecked="{Binding AutoApplyUpdates}" Click="AutoInstallUpdatesClicked">
                         <MenuItem.Icon>
@@ -121,11 +124,15 @@
                     </MenuItem>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="Import ClassicUO Launcher profiles" Click="ImportCUOLauncherClick"/>
+                <Separator/>
+                <MenuItem Header="Reinstall launcher (latest)" Click="ReinstallLauncherClick"/>
+                <Separator/>
+                <MenuItem Header="Edit Profiles" Click="EditProfilesClicked"/>
+                <Separator/>
                 <MenuItem Header="TazUO.org" Click="OpenWebsiteClicked"/>
                 <Separator/>
                 <MenuItem Header="GitHub" Click="OpenGithubClicked"/>
-                <Separator/>
-                <MenuItem Header="Edit Profiles" Click="EditProfilesClicked"/>
             </MenuItem>
         </Menu>
 
