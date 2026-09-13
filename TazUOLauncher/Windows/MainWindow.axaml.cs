@@ -729,10 +729,8 @@ public partial class MainWindow : Window
 
         bool proceed = await Utility.ShowConfirmationDialog(this,
             "Install PR test build?",
-            $"This replaces your installed client with an unmerged test build from Taz's repository:\n\n{build.DisplayName}\n\n" +
-            "If you are running Holiday Edition, it will be replaced. PR builds are experimental and may be unstable. " +
-            "Your settings and profile data are kept.\n\n" +
-            "You can put your old client back afterwards from Install build.\n\n" +
+            $"This will replace your current TazUO installation with the build from:\n\n{build.DisplayName}\n\n" +
+            "PR builds are unmerged and experimental, so they may be unstable. Your settings and profile data are kept.\n\n" +
             "Do you want to continue?");
 
         if (!proceed) return;
