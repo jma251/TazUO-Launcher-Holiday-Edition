@@ -1,0 +1,147 @@
+name: Watch upstream launcher
+
+# Checks whether PlayTazUO/TUO-Launcher has launcher commits this fork does not,
+# and raises a GitHub issue listing them so the change can be reviewed and taken
+# deliberately rather than discovered by accident.
+#
+# The issue is reused, not duplicated: one open issue at a time, rewritten on each
+# run, and closed automatically once the commits are merged.
+
+on:
+  # Once a day. Upstream is not fast moving and this costs one clone.
+  schedule:
+    - cron: '0 13 * * *'
+  # And on demand from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  UPSTREAM_REPO: PlayTazUO/TUO-Launcher
+  UPSTREAM_BRANCH: main
+  ISSUE_TITLE: 'Upstream launcher changes to review'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Full history: the comparison needs the merge base with upstream.
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compare against upstream
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --quiet upstream "${UPSTREAM_BRANCH}"
+
+          RANGE="HEAD..upstream/${UPSTREAM_BRANCH}"
+          COUNT=$(git rev-list --count "$RANGE")
+
+          # Files must be compared from the merge base, not between branch tips.
+          # Tip-to-tip also lists every file this fork changed, which makes the
+          # collision list below meaningless.
+          BASE=$(git merge-base HEAD "upstream/${UPSTREAM_BRANCH}")
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" = "0" ]; then
+            echo "Nothing new upstream."
+            exit 0
+          fi
+
+          echo "$COUNT upstream commit(s) not in this fork."
+
+          {
+            echo "Taz has **${COUNT}** launcher commit(s) that are not in this fork."
+            echo
+            echo "### Commits"
+            echo
+            git log --reverse \
+              --pretty=format:"- [\`%h\`](https://github.com/${UPSTREAM_REPO}/commit/%H) %s — %an, %ad" \
+              --date=short "$RANGE"
+            echo
+            echo
+            echo "### Files he changed"
+            echo
+            echo '```'
+            git diff --stat "${BASE}..upstream/${UPSTREAM_BRANCH}" | tail -40
+            echo '```'
+            echo
+            echo "### Files he changed that this fork has also modified"
+            echo
+            echo "These are where a merge is most likely to conflict."
+            echo
+            COLLIDE=0
+            while read -r f; do
+              [ -z "$f" ] && continue
+              MINE=$(git log --oneline "${BASE}..HEAD" -- "$f" | wc -l | tr -d ' ')
+              if [ "$MINE" != "0" ]; then
+                echo "- \`$f\` — ${MINE} local commit(s)"
+                COLLIDE=1
+              fi
+            done < <(git diff --name-only "${BASE}..upstream/${UPSTREAM_BRANCH}")
+            # An "&&" one-liner here would exit non-zero when COLLIDE is 1, and
+            # set -e would kill the step exactly when there IS something to report.
+            if [ "$COLLIDE" = "0" ]; then
+              echo "_None._"
+            fi
+            echo
+            echo "---"
+            echo
+            echo "[Compare on GitHub](https://github.com/${UPSTREAM_REPO}/compare/${GITHUB_SHA}...${UPSTREAM_BRANCH})"
+            echo
+            echo "Nothing has been merged. This issue is rewritten on each run and closes"
+            echo "itself once these commits are in \`main\`."
+          } > issue-body.md
+
+          echo "--- issue body ---"
+          cat issue-body.md
+
+      - name: Open or update the review issue
+        if: steps.compare.outputs.count != '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          EXISTING=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
+                       --json number,title \
+                       --jq "[.[] | select(.title == \"${ISSUE_TITLE}\")] | .[0].number // empty")
+
+          if [ -n "$EXISTING" ]; then
+            echo "Updating issue #${EXISTING}."
+            gh issue edit "$EXISTING" --body-file issue-body.md
+          else
+            echo "Opening a new issue."
+            gh issue create --title "${ISSUE_TITLE}" --body-file issue-body.md
+          fi
+
+      # Once the commits are merged there is nothing to review, so do not leave a
+      # stale issue sitting open.
+      - name: Close the issue when nothing is outstanding
+        if: steps.compare.outputs.count == '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          EXISTING=$(gh issue list --state open --search "\"${ISSUE_TITLE}\" in:title" \
+                       --json number,title \
+                       --jq "[.[] | select(.title == \"${ISSUE_TITLE}\")] | .[0].number // empty")
+
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "Upstream is fully merged into \`main\`. Closing."
+          else
+            echo "Nothing outstanding, no issue open."
+          fi
